@@ -1,10 +1,13 @@
 {
   "name": "Hành Trình Của Tôi",
   "short_name": "Hành Trình",
+  "description": "App lập kế hoạch lộ trình cá nhân",
   "start_url": "./index.html",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#F4F5F9",
   "theme_color": "#F4F5F9",
+  "lang": "vi",
   "icons": [
     {
       "src": "https://cdn-icons-png.flaticon.com/512/854/854878.png",
