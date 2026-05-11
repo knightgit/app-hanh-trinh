@@ -89,7 +89,109 @@ const Storage = {
         } catch (e) {
             toast('Lưu thất bại: bộ nhớ đầy', 'error');
         }
+        DataFile.write({ version: 1, savedAt: new Date().toISOString(), itinerary, config });
     },
+};
+
+/* ============ DATA FILE (File System Access API + IndexedDB handle) ============ */
+const DataFile = {
+    _handle: null,
+
+    get supported() { return 'showOpenFilePicker' in window; },
+
+    async _db() {
+        return new Promise((res, rej) => {
+            const r = indexedDB.open('HanhTrinhDB', 1);
+            r.onupgradeneeded = e => e.target.result.createObjectStore('meta');
+            r.onsuccess = e => res(e.target.result);
+            r.onerror = () => rej(r.error);
+        });
+    },
+
+    async _loadHandle() {
+        try {
+            const db = await this._db();
+            return new Promise(res => {
+                const tx = db.transaction('meta', 'readonly');
+                const req = tx.objectStore('meta').get('fh');
+                req.onsuccess = () => res(req.result || null);
+                req.onerror = () => res(null);
+            });
+        } catch { return null; }
+    },
+
+    async _storeHandle(handle) {
+        try {
+            const db = await this._db();
+            return new Promise((res, rej) => {
+                const tx = db.transaction('meta', 'readwrite');
+                tx.objectStore('meta').put(handle, 'fh');
+                tx.oncomplete = res; tx.onerror = rej;
+            });
+        } catch(e) { console.warn('DataFile._storeHandle', e); }
+    },
+
+    async _perm(handle) {
+        if (!handle) return false;
+        try {
+            let p = await handle.queryPermission({ mode: 'readwrite' });
+            if (p !== 'granted') p = await handle.requestPermission({ mode: 'readwrite' });
+            return p === 'granted';
+        } catch { return false; }
+    },
+
+    async init() {
+        if (!this.supported) return;
+        const h = await this._loadHandle();
+        if (h && await this._perm(h)) this._handle = h;
+    },
+
+    async readPayload() {
+        if (!this._handle) return null;
+        try {
+            const file = await this._handle.getFile();
+            return JSON.parse(await file.text());
+        } catch { return null; }
+    },
+
+    write(payload) {
+        if (!this._handle) return;
+        this._handle.createWritable()
+            .then(w => w.write(JSON.stringify(payload, null, 2)).then(() => w.close()))
+            .catch(e => console.warn('DataFile.write', e));
+    },
+
+    async connect(create = false) {
+        if (!this.supported) { toast('Trình duyệt chưa hỗ trợ File Access API', 'error'); return null; }
+        try {
+            let h;
+            if (create) {
+                h = await window.showSaveFilePicker({
+                    suggestedName: 'hanh-trinh-data.json',
+                    types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }],
+                });
+            } else {
+                [h] = await window.showOpenFilePicker({
+                    types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }],
+                    multiple: false,
+                });
+            }
+            this._handle = h;
+            await this._storeHandle(h);
+            return h;
+        } catch { return null; }
+    },
+
+    async disconnect() {
+        this._handle = null;
+        try {
+            const db = await this._db();
+            const tx = db.transaction('meta', 'readwrite');
+            tx.objectStore('meta').delete('fh');
+        } catch {}
+    },
+
+    get fileName() { return this._handle?.name || null; }
 };
 
 /* ============ COLOR & ICON ============ */
@@ -152,22 +254,35 @@ const STATE = {
     itinerary: structuredClone(DEFAULT_DATA),
     isEditMode: false,
     currentFilter: 'all',
-    searchQuery: '',
 };
 
-function loadState() {
+function _applyConfig(config) {
+    if (!config || typeof config !== 'object') return;
+    STATE.config = {
+        ...DEFAULT_CONFIG,
+        ...config,
+        types: { ...DEFAULT_CONFIG.types, ...(config.types || {}) },
+        routes: Array.isArray(config.routes) && config.routes.length ? config.routes : DEFAULT_CONFIG.routes,
+    };
+}
+
+async function loadState() {
+    await DataFile.init();
+
+    // Try file first
+    const payload = await DataFile.readPayload();
+    if (payload && Array.isArray(payload.itinerary) && payload.itinerary.length) {
+        STATE.itinerary = payload.itinerary;
+        _applyConfig(payload.config);
+        STATE.currentFilter = sessionStorage.getItem('filter') || 'all';
+        console.log('[Hành Trình] Loaded from file:', DataFile.fileName);
+        return;
+    }
+
+    // Fallback: localStorage
     const { data, config } = Storage.load();
-    if (config && typeof config === 'object') {
-        STATE.config = {
-            ...DEFAULT_CONFIG,
-            ...config,
-            types: { ...DEFAULT_CONFIG.types, ...(config.types || {}) },
-            routes: Array.isArray(config.routes) && config.routes.length ? config.routes : DEFAULT_CONFIG.routes,
-        };
-    }
-    if (Array.isArray(data) && data.length) {
-        STATE.itinerary = data;
-    }
+    _applyConfig(config);
+    if (Array.isArray(data) && data.length) STATE.itinerary = data;
     STATE.currentFilter = sessionStorage.getItem('filter') || 'all';
 }
 
@@ -412,7 +527,11 @@ const Modals = {
         $('type-editor').classList.add('translate-y-full');
     }
 };
-document.addEventListener('keydown', e => { if (e.key === 'Escape') Modals.closeAll(); });
+document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    if (!$('multi-nav-sheet').classList.contains('translate-y-full')) MultiNavScreen.close();
+    else Modals.closeAll();
+});
 
 /* ============ NAV SHEET ============ */
 const NavSheet = {
@@ -426,31 +545,12 @@ const NavSheet = {
         this.currentList = null;
         $('nav-sheet-title').textContent = 'Mở "' + item.name + '" bằng';
         $('nav-sheet-desc').textContent = 'Chọn ứng dụng điều hướng';
-        $('multi-options').classList.add('hidden');
         this.renderApps(false);
         Modals.open($('nav-sheet'));
     },
 
     openMulti() {
-        const list = UI.getFiltered();
-        if (list.length < 2) { toast('Cần ít nhất 2 điểm có tọa độ', 'error'); return; }
-        const withCoords = list.filter(i => parseLatLng(i.mapLink));
-        if (withCoords.length < 2) { toast('Cần ít nhất 2 điểm có tọa độ', 'error'); return; }
-
-        this.currentItem = null;
-        this.currentList = withCoords;
-        $('nav-sheet-title').textContent = `Đi qua ${withCoords.length} điểm`;
-        $('nav-sheet-desc').textContent = 'Chọn app để mở toàn bộ lộ trình';
-        $('multi-options').classList.remove('hidden');
-        this.renderApps(true);
-        this.updateSummary();
-        $('toll-group').value = STATE.config.tollGroup;
-        $('toll-group').onchange = e => {
-            STATE.config.tollGroup = Number(e.target.value);
-            persist();
-            this.updateSummary();
-        };
-        Modals.open($('nav-sheet'));
+        MultiNavScreen.open();
     },
 
     renderApps(isMulti) {
@@ -467,21 +567,185 @@ const NavSheet = {
         }).join('');
     },
 
-    updateSummary() {
-        const list = this.currentList || [];
-        const pts = list.map(i => parseLatLng(i.mapLink)).filter(Boolean);
-        let totalKm = 0;
-        for (let i = 1; i < pts.length; i++) totalKm += haversine(pts[i-1], pts[i]);
-        const toll = Toll.estimate(totalKm, STATE.config.tollGroup);
-        $('route-summary').textContent = list.map(i => i.name).join(' → ');
-        $('summary-distance').textContent = totalKm.toFixed(1) + ' km';
-        $('summary-toll').textContent = '~ ' + Toll.format(toll);
-    },
-
     handleOpen(app) {
         if (this.currentList) NavApps.openMulti(app, this.currentList);
         else if (this.currentItem) NavApps.open(app, this.currentItem);
         Modals.closeAll();
+    }
+};
+
+/* ============ MULTI NAV SCREEN ============ */
+const MultiNavScreen = {
+    selectedIds: [],
+    dragSrcId: null,
+
+    open() {
+        this.selectedIds = STATE.itinerary
+            .filter(i => parseLatLng(i.mapLink))
+            .map(i => i.id);
+        $('mnav-toll-group').value = STATE.config.tollGroup;
+        this.render();
+        this.renderApps();
+        $('multi-nav-sheet').classList.remove('translate-y-full');
+        hapticTap();
+    },
+
+    close() {
+        $('multi-nav-sheet').classList.add('translate-y-full');
+    },
+
+    getSelectedItems() {
+        return this.selectedIds.map(id => STATE.itinerary.find(i => i.id === id)).filter(Boolean);
+    },
+
+    render() {
+        this.updateStats();
+        this.renderSelected();
+        this.renderAvailable();
+    },
+
+    renderSelected() {
+        const items = this.getSelectedItems();
+        const section = $('mnav-selected-section');
+        if (items.length === 0) {
+            section.innerHTML = `<div class="text-center py-8 text-slate-400 text-sm">Chưa chọn điểm nào<br><span class="text-xs mt-1 block">Nhấn <strong class="text-appBlue">+</strong> bên dưới để thêm điểm vào lộ trình</span></div>`;
+            return;
+        }
+        section.innerHTML = `
+        <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Lộ trình (${items.length} điểm)</h3>
+        <div id="mnav-selected-list">
+            ${items.map((item, idx) => {
+                const type = STATE.config.types[item.type] || STATE.config.types[Object.keys(STATE.config.types)[0]];
+                const c = COLOR_MAP[type.color] || COLOR_MAP.slate;
+                const hasCoords = !!parseLatLng(item.mapLink);
+                const isLast = idx === items.length - 1;
+                return `
+                <div class="mnav-drag-item flex items-center gap-3 bg-white rounded-2xl p-3 border border-slate-100 shadow-soft"
+                     draggable="true" data-mnav-id="${item.id}">
+                    <i class="fa-solid fa-grip-lines text-slate-300 shrink-0 px-0.5"></i>
+                    <div class="w-8 h-8 rounded-full ${c.bg} flex items-center justify-center text-white text-xs shrink-0 ${!hasCoords ? 'opacity-40' : ''}">
+                        <i class="fa-solid ${esc(type.icon)}"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="text-[14px] font-bold text-appDark truncate">${esc(item.name)}</div>
+                        <div class="text-[11px] text-slate-400">${esc(type.name)}${!hasCoords ? ' · ⚠ Không có tọa độ' : ''}</div>
+                    </div>
+                    <button class="w-7 h-7 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center active:scale-90 shrink-0"
+                            data-action="mnavRemove" data-id="${item.id}">
+                        <i class="fa-solid fa-xmark text-xs"></i>
+                    </button>
+                </div>
+                ${!isLast ? `<div class="flex pl-[52px] pointer-events-none -my-0.5"><div class="w-px h-4 bg-slate-200"></div></div>` : ''}`;
+            }).join('')}
+        </div>`;
+        this.attachDrag();
+    },
+
+    renderAvailable() {
+        const available = STATE.itinerary.filter(i => !this.selectedIds.includes(i.id));
+        const section = $('mnav-available-section');
+        if (available.length === 0) { section.innerHTML = ''; return; }
+        section.innerHTML = `
+        <div class="group-divider text-center text-xs font-bold text-slate-500 uppercase tracking-wider py-3">
+            <span>Thêm điểm dừng</span>
+        </div>
+        <div class="space-y-2 mt-2">
+            ${available.map(item => {
+                const type = STATE.config.types[item.type] || STATE.config.types[Object.keys(STATE.config.types)[0]];
+                const c = COLOR_MAP[type.color] || COLOR_MAP.slate;
+                const hasCoords = !!parseLatLng(item.mapLink);
+                return `
+                <button class="w-full flex items-center gap-3 bg-white rounded-2xl p-3 border border-slate-100 shadow-soft active:scale-[0.99] transition"
+                        data-action="mnavAdd" data-id="${item.id}">
+                    <div class="w-8 h-8 rounded-full ${c.bg} flex items-center justify-center text-white text-xs shrink-0 ${!hasCoords ? 'opacity-40' : ''}">
+                        <i class="fa-solid ${esc(type.icon)}"></i>
+                    </div>
+                    <div class="flex-1 min-w-0 text-left">
+                        <div class="text-[14px] font-bold text-appDark truncate">${esc(item.name)}</div>
+                        <div class="text-[11px] text-slate-400">${esc(type.name)}${!hasCoords ? ' · ⚠ Không có tọa độ' : ''}</div>
+                    </div>
+                    <div class="w-7 h-7 rounded-full bg-blue-50 text-appBlue flex items-center justify-center shrink-0">
+                        <i class="fa-solid fa-plus text-xs"></i>
+                    </div>
+                </button>`;
+            }).join('')}
+        </div>`;
+    },
+
+    renderApps() {
+        $('mnav-apps-container').innerHTML = NavApps.apps.map(a => `
+            <button data-action="mnavOpen" data-app="${a.id}" class="nav-app-btn">
+                <div class="w-10 h-10 rounded-2xl ${a.bg} flex items-center justify-center text-lg ${a.color}">
+                    <i class="${a.icon}"></i>
+                </div>
+                <span class="text-[10px] font-bold text-appDark text-center leading-tight">${a.name}</span>
+            </button>`).join('');
+    },
+
+    updateStats() {
+        const items = this.getSelectedItems();
+        const el = $('mnav-stats');
+        if (items.length < 2) { el.classList.add('hidden'); return; }
+        el.classList.remove('hidden');
+        const pts = items.map(i => parseLatLng(i.mapLink)).filter(Boolean);
+        let km = 0;
+        for (let i = 1; i < pts.length; i++) km += haversine(pts[i-1], pts[i]);
+        const toll = Toll.estimate(km, STATE.config.tollGroup);
+        $('mnav-count').textContent = items.length;
+        $('mnav-distance').textContent = km.toFixed(1) + ' km';
+        $('mnav-toll').textContent = '~' + Toll.format(toll);
+    },
+
+    addItem(id) {
+        if (!this.selectedIds.includes(id)) {
+            this.selectedIds.push(id);
+            this.render();
+            hapticTap();
+        }
+    },
+
+    removeItem(id) {
+        this.selectedIds = this.selectedIds.filter(i => i !== id);
+        this.render();
+        hapticDelete();
+    },
+
+    handleOpen(app) {
+        const list = this.getSelectedItems().filter(i => parseLatLng(i.mapLink));
+        if (list.length < 2) { toast('Cần ít nhất 2 điểm có tọa độ', 'error'); hapticWarn(); return; }
+        NavApps.openMulti(app, list);
+    },
+
+    attachDrag() {
+        const els = document.querySelectorAll('.mnav-drag-item');
+        els.forEach(el => {
+            el.addEventListener('dragstart', e => {
+                hapticTap();
+                this.dragSrcId = Number(el.dataset.mnavId);
+                el.classList.add('dragging');
+                e.dataTransfer.effectAllowed = 'move';
+            });
+            el.addEventListener('dragend', () => {
+                el.classList.remove('dragging');
+                document.querySelectorAll('.mnav-drag-item.drop-target').forEach(x => x.classList.remove('drop-target'));
+            });
+            el.addEventListener('dragover', e => { e.preventDefault(); el.classList.add('drop-target'); });
+            el.addEventListener('dragleave', () => el.classList.remove('drop-target'));
+            el.addEventListener('drop', e => {
+                e.preventDefault();
+                const tgtId = Number(el.dataset.mnavId);
+                if (this.dragSrcId && this.dragSrcId !== tgtId) {
+                    const s = this.selectedIds.indexOf(this.dragSrcId);
+                    const t = this.selectedIds.indexOf(tgtId);
+                    if (s >= 0 && t >= 0) {
+                        const [moved] = this.selectedIds.splice(s, 1);
+                        this.selectedIds.splice(t, 0, moved);
+                        this.render();
+                        hapticSuccess();
+                    }
+                }
+            });
+        });
     }
 };
 
@@ -534,12 +798,9 @@ const UI = {
     },
 
     getFiltered() {
-        let list = STATE.currentFilter === 'all'
+        return STATE.currentFilter === 'all'
             ? STATE.itinerary
             : STATE.itinerary.filter(i => i.route === STATE.currentFilter);
-        const q = STATE.searchQuery.trim().toLowerCase();
-        if (q) list = list.filter(i => (i.name||'').toLowerCase().includes(q) || (i.desc||'').toLowerCase().includes(q));
-        return list;
     },
 
     render() {
@@ -550,13 +811,13 @@ const UI = {
         if (!list.length) {
             container.innerHTML = '';
             empty.classList.remove('hidden');
-            $('empty-msg').textContent = STATE.searchQuery ? 'Không tìm thấy kết quả.' : 'Chưa có điểm dừng.';
+            $('empty-msg').textContent = 'Chưa có điểm dừng.';
             return;
         }
         empty.classList.add('hidden');
 
         container.className = 'scroll-area hide-scroll px-5 pt-5 relative';
-        const grouped = STATE.currentFilter === 'all' && STATE.config.groupView && !STATE.searchQuery;
+        const grouped = STATE.currentFilter === 'all' && STATE.config.groupView;
         container.innerHTML = grouped
             ? this.renderGrouped(list)
             : list.map((i, idx) => this.renderCard(i, idx === list.length - 1)).join('');
@@ -774,11 +1035,58 @@ const Settings = {
         this.tempTypes = structuredClone(STATE.config.types);
         this.renderTypes();
         this.renderRoutes();
-        $('cfg-show-map').checked  = !!STATE.config.showMap;
+        $('cfg-show-map').checked   = !!STATE.config.showMap;
         $('cfg-group-view').checked = !!STATE.config.groupView;
-        $('cfg-weather').checked   = !!STATE.config.weather;
-        $('cfg-haptic').checked    = !!STATE.config.haptic;
+        $('cfg-weather').checked    = !!STATE.config.weather;
+        $('cfg-haptic').checked     = !!STATE.config.haptic;
+        this.refreshFileStatus();
         Modals.open($('settings-sheet'));
+    },
+
+    refreshFileStatus() {
+        const txt = $('file-status-text');
+        const disconnBtn = $('file-disconnect-btn');
+        const noSupport = $('file-no-support');
+        if (DataFile.fileName) {
+            txt.textContent = DataFile.fileName;
+            txt.className = 'text-[12px] text-emerald-600 font-bold flex-1 truncate';
+            disconnBtn.classList.remove('hidden');
+        } else {
+            txt.textContent = 'Chưa liên kết file';
+            txt.className = 'text-[12px] text-slate-400 flex-1';
+            disconnBtn.classList.add('hidden');
+        }
+        if (DataFile.supported) noSupport.classList.add('hidden');
+        else noSupport.classList.remove('hidden');
+    },
+
+    async connectFile(create = false) {
+        const handle = await DataFile.connect(create);
+        if (!handle) return;
+        const existing = await DataFile.readPayload();
+        if (!create && existing && Array.isArray(existing.itinerary) && existing.itinerary.length) {
+            if (confirm(`File "${handle.name}" có ${existing.itinerary.length} điểm dừng.\nTải dữ liệu từ file vào app?`)) {
+                STATE.itinerary = existing.itinerary;
+                _applyConfig(existing.config);
+                persistNow();
+                UI.renderFilters();
+                UI.render();
+            } else {
+                DataFile.write({ version: 1, savedAt: new Date().toISOString(), itinerary: STATE.itinerary, config: STATE.config });
+            }
+        } else {
+            DataFile.write({ version: 1, savedAt: new Date().toISOString(), itinerary: STATE.itinerary, config: STATE.config });
+        }
+        this.refreshFileStatus();
+        toast((create ? 'Đã tạo' : 'Đã liên kết') + ' file: ' + handle.name);
+        hapticSuccess();
+    },
+
+    async disconnectFile() {
+        await DataFile.disconnect();
+        this.refreshFileStatus();
+        toast('Đã hủy liên kết file');
+        hapticTap();
     },
 
     renderTypes() {
@@ -820,6 +1128,61 @@ const Settings = {
         persistNow();
         UI.renderFilters(); UI.render();
         Modals.closeAll(); toast('Đã lưu cấu hình'); hapticSuccess();
+    },
+
+    exportData() {
+        const payload = {
+            version: 1,
+            exportedAt: new Date().toISOString(),
+            itinerary: STATE.itinerary,
+            config: STATE.config,
+        };
+        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const date = new Date().toLocaleDateString('vi-VN').replace(/\//g, '-');
+        a.download = `hanh-trinh-${date}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        toast('Đã xuất file dữ liệu');
+        hapticSuccess();
+    },
+
+    importData() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.json,application/json';
+        input.onchange = async e => {
+            const file = e.target.files[0];
+            if (!file) return;
+            try {
+                const text = await file.text();
+                const data = JSON.parse(text);
+                if (!Array.isArray(data.itinerary)) throw new Error('Không tìm thấy trường itinerary');
+                if (!confirm(`Nhập ${data.itinerary.length} điểm dừng từ "${file.name}"?\nDữ liệu hiện tại sẽ bị thay thế.`)) return;
+                STATE.itinerary = data.itinerary;
+                if (data.config && typeof data.config === 'object') {
+                    STATE.config = {
+                        ...DEFAULT_CONFIG,
+                        ...data.config,
+                        types: { ...DEFAULT_CONFIG.types, ...(data.config.types || {}) },
+                        routes: Array.isArray(data.config.routes) && data.config.routes.length
+                            ? data.config.routes : DEFAULT_CONFIG.routes,
+                    };
+                }
+                persistNow();
+                UI.renderFilters();
+                UI.render();
+                Modals.closeAll();
+                toast(`Đã nhập ${data.itinerary.length} điểm dừng`);
+                hapticSuccess();
+            } catch (err) {
+                toast('File không hợp lệ: ' + err.message, 'error');
+                hapticWarn();
+            }
+        };
+        input.click();
     },
 
     addRoute() { this.tempRoutes.push({ id: 'route_' + Date.now(), name: 'Tuyến mới' }); this.renderRoutes(); hapticTap(); },
@@ -931,14 +1294,15 @@ const PWA = {
 
 /* ============ EVENT DELEGATION (1 nguồn duy nhất) ============ */
 function setupEvents() {
-    // Search
-    $('search-input').addEventListener('input', debounce(e => {
-        STATE.searchQuery = e.target.value;
-        UI.render();
-    }, 200));
-
     // Link input → fetch title
     $('loc-link').addEventListener('input', e => Location.fetchTitle(e.target.value.trim()));
+
+    // Multi-nav toll group
+    $('mnav-toll-group').addEventListener('change', e => {
+        STATE.config.tollGroup = Number(e.target.value);
+        persist();
+        MultiNavScreen.updateStats();
+    });
 
     // Form submit
     $('location-form').addEventListener('submit', e => Location.save(e));
@@ -959,8 +1323,12 @@ function setupEvents() {
                 if (confirm('Xóa điểm dừng này?')) Location.remove(id);
                 break;
             case 'openNav': NavSheet.openSingle(id); break;
-            case 'openMultiNav': NavSheet.openMulti(); break;
+            case 'openMultiNav': MultiNavScreen.open(); break;
             case 'navOpen': NavSheet.handleOpen(btn.dataset.app); break;
+            case 'closeMultiNav': MultiNavScreen.close(); break;
+            case 'mnavAdd': MultiNavScreen.addItem(id); break;
+            case 'mnavRemove': MultiNavScreen.removeItem(id); break;
+            case 'mnavOpen': MultiNavScreen.handleOpen(btn.dataset.app); break;
             case 'setFilter':
                 STATE.currentFilter = btn.dataset.id;
                 sessionStorage.setItem('filter', STATE.currentFilter);
@@ -974,18 +1342,13 @@ function setupEvents() {
                 UI.render(); hapticTap();
                 break;
             }
-            case 'toggleSearch': {
-                const w = $('search-wrap');
-                w.classList.toggle('hidden');
-                if (!w.classList.contains('hidden')) $('search-input').focus();
-                hapticTap();
-                break;
-            }
-            case 'clearSearch':
-                $('search-input').value = ''; STATE.searchQuery = ''; UI.render(); hapticTap();
-                break;
             case 'openSettings': Settings.open(); hapticTap(); break;
             case 'saveSettings': Settings.save(); break;
+            case 'exportData': Settings.exportData(); break;
+            case 'importData': Settings.importData(); break;
+            case 'connectFile': Settings.connectFile(false); break;
+            case 'createFile': Settings.connectFile(true); break;
+            case 'disconnectFile': Settings.disconnectFile(); break;
             case 'addNewRoute': Settings.addRoute(); break;
             case 'removeRoute': Settings.removeRoute(Number(btn.dataset.index)); break;
             case 'openTypeEditor': TypeEditor.open(key); hapticTap(); break;
@@ -1004,14 +1367,14 @@ function setupEvents() {
 }
 
 /* ============ START ============ */
-function start() {
+async function start() {
     try {
-        loadState();
+        await loadState();
         UI.renderFilters();
         UI.render();
         setupEvents();
         PWA.init();
-        console.log('[Hành Trình] App loaded. Items:', STATE.itinerary.length);
+        console.log('[Hành Trình] v8 loaded. Items:', STATE.itinerary.length, '| Storage:', DataFile.fileName || 'localStorage');
     } catch (err) {
         console.error('Start error:', err);
         document.body.innerHTML = `<div style="padding:40px;text-align:center;font-family:system-ui">
