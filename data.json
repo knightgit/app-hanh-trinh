@@ -1,0 +1,82 @@
+{
+  "version": 1,
+  "savedAt": "2026-05-11T00:00:00.000Z",
+  "itinerary": [
+    {
+      "id": 1,
+      "type": "start",
+      "route": "all",
+      "name": "Nhà SG - Chung cư An Khang",
+      "desc": "Điểm xuất phát · 28-30 Đường 19, An Phú, Q.2, TP.HCM · Kiểm tra xe, đổ đầy xăng",
+      "mapLink": "https://www.google.com/maps/search/?api=1&query=Chung+c%C6%B0+An+Khang+%C4%91%C6%B0%E1%BB%9Dng+19+An+Ph%C3%BA+Qu%E1%BA%ADn+2+TP+HCM"
+    },
+    {
+      "id": 2,
+      "type": "rest",
+      "route": "route_2",
+      "name": "Điểm dừng chân Xuân Anh",
+      "desc": "Nghỉ ngơi, ăn uống dọc cao tốc / QL28B",
+      "mapLink": "https://www.google.com/maps/search/?api=1&query=%C4%90i%E1%BB%83m+d%E1%BB%ABng+ch%C3%A2n+Xu%C3%A2n+Anh+B%C3%ACnh+Thu%E1%BA%ADn"
+    },
+    {
+      "id": 3,
+      "type": "rest",
+      "route": "route_2",
+      "name": "Điểm dừng chân Dốc đá",
+      "desc": "Nghỉ ngơi trên đèo · cẩn thận xe tải",
+      "mapLink": "https://www.google.com/maps/search/?api=1&query=%C4%90i%E1%BB%83m+d%E1%BB%ABng+ch%C3%A2n+D%E1%BB%91c+%C4%91%C3%A1+B%C3%ACnh+Thu%E1%BA%ADn"
+    },
+    {
+      "id": 4,
+      "type": "pass",
+      "route": "route_1",
+      "name": "Đèo Đa Mi",
+      "desc": "QL55 · Đa Mi, Hàm Thuận Bắc, Bình Thuận · số thấp, cẩn thận xe ngược chiều",
+      "mapLink": "https://www.google.com/maps/@11.2971,107.8836,15z"
+    },
+    {
+      "id": 5,
+      "type": "pass",
+      "route": "route_1",
+      "name": "Đèo Gia Bắc",
+      "desc": "QL28 · Hàm Thuận Bắc → Di Linh · dài ~10km, cao 800m, đường hẹp 1 làn",
+      "mapLink": "https://www.google.com/maps/@11.2862,108.1018,15z"
+    },
+    {
+      "id": 6,
+      "type": "pass",
+      "route": "route_2",
+      "name": "Đèo Đại Ninh",
+      "desc": "QL28B · Bắc Bình (Bình Thuận) → Đức Trọng (Lâm Đồng) · đỉnh 12km, nhiều cua gấp",
+      "mapLink": "https://www.google.com/maps/@11.5031,108.3491,15z"
+    },
+    {
+      "id": 7,
+      "type": "start",
+      "route": "all",
+      "name": "Nhà ĐL - 6 La Sơn Phu tử",
+      "desc": "Điểm đến · Phường Xuân Hương, TP. Đà Lạt, Lâm Đồng",
+      "mapLink": "https://www.google.com/maps/search/?api=1&query=6+La+S%C6%A1n+Phu+T%E1%BB%AD+%C4%90%C3%A0+L%E1%BA%A1t+L%C3%A2m+%C4%90%E1%BB%93ng"
+    }
+  ],
+  "config": {
+    "showMap": false,
+    "groupView": true,
+    "weather": true,
+    "haptic": true,
+    "tollGroup": 1,
+    "types": {
+      "start":  { "name": "Vị trí",    "icon": "fa-house-flag",   "color": "indigo" },
+      "rest":   { "name": "Trạm nghỉ", "icon": "fa-mug-hot",      "color": "orange" },
+      "gas":    { "name": "Trạm xăng", "icon": "fa-gas-pump",     "color": "red"    },
+      "scenic": { "name": "Ngắm cảnh", "icon": "fa-camera-retro", "color": "pink"   },
+      "pass":   { "name": "Đường đèo", "icon": "fa-mountain",     "color": "emerald"}
+    },
+    "routes": [
+      { "id": "all",     "name": "Tuyến chung"  },
+      { "id": "route_1", "name": "Tuyến QL1A"   },
+      { "id": "route_2", "name": "Tuyến Cao Tốc"}
+    ]
+  }
+}
+d
