@@ -2,8 +2,16 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
+    <!-- Cấu hình chuẩn PWA để chạy Full màn hình trên Mobile -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Hành Trình Của Tôi</title>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <link rel="manifest" href="manifest.json">
+    
+    <title>Hành Trình</title>
+    
+    <!-- Thư viện giao diện -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <script>
@@ -14,22 +22,29 @@
                         appBg: '#F4F5F9', appBlue: '#0A7AFF', appDark: '#1C1C1E', appRed: '#FF3B30',
                     },
                     boxShadow: {
-                        'soft': '0 4px 24px rgba(0, 0, 0, 0.04)',
-                        'float': '0 10px 24px rgba(10, 122, 255, 0.25)',
+                        'soft': '0 8px 30px rgba(0, 0, 0, 0.04)',
+                        'float': '0 12px 32px rgba(10, 122, 255, 0.25)',
                     }
                 }
             }
         }
     </script>
     <style>
-        body { -webkit-tap-highlight-color: transparent; background-color: #000; touch-action: manipulation; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
+        /* Tối ưu trải nghiệm App trên điện thoại */
+        body { -webkit-tap-highlight-color: transparent; background-color: #000; touch-action: manipulation; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
         .app-container { max-width: 430px; margin: 0 auto; background-color: #F4F5F9; height: 100dvh; display: flex; flex-direction: column; overflow: hidden; position: relative; }
+        
+        /* Căn lề an toàn cho màn hình tai thỏ (iPhone) */
+        header { padding-top: max(env(safe-area-inset-top), 1.5rem); }
+        .pb-safe { padding-bottom: max(env(safe-area-inset-bottom), 1.5rem); }
+        
         .scroll-area { flex: 1; overflow-y: auto; padding-bottom: 120px; }
         .hide-scroll::-webkit-scrollbar { display: none; }
         .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
         .glass-header { background: rgba(244, 245, 249, 0.85); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
         select { -webkit-appearance: none; appearance: none; }
         
+        /* Spinner Tải dữ liệu */
         .loader { border: 2px solid rgba(10,122,255,0.2); border-top: 2px solid #0A7AFF; border-radius: 50%; width: 18px; height: 18px; animation: spin 1s linear infinite; }
         @keyframes spin { 100% { transform: rotate(360deg); } }
     </style>
@@ -38,132 +53,140 @@
 
 <div class="app-container">
     
-    <!-- Top App Bar -->
-    <header class="glass-header sticky top-0 z-20 pt-12 pb-3 shadow-sm border-b border-slate-200/50">
-        <div class="px-5 flex justify-between items-center mb-3">
-            <h1 class="text-2xl font-extrabold text-appDark tracking-tight">Hành Trình</h1>
+    <!-- TOP HEADER -->
+    <header class="glass-header sticky top-0 z-20 pb-3 shadow-sm border-b border-slate-200/50">
+        <div class="px-5 flex justify-between items-center mb-4 pt-4">
+            <div>
+                <h1 class="text-3xl font-extrabold text-appDark tracking-tight">Lộ trình</h1>
+                <p class="text-sm text-slate-500 font-medium mt-0.5" id="header-subtitle">Đang tải...</p>
+            </div>
             <div class="flex gap-2">
-                <!-- Settings Button -->
-                <button onclick="openSettings()" class="w-9 h-9 bg-slate-200/60 rounded-full flex items-center justify-center text-slate-600 active:scale-90 transition-all">
+                <!-- Nút Cài đặt (Settings) -->
+                <button onclick="openSettings()" class="w-10 h-10 bg-slate-200/60 rounded-full flex items-center justify-center text-slate-600 active:scale-90 transition-all">
                     <i class="fa-solid fa-gear"></i>
                 </button>
-                <!-- Edit Toggle Button -->
-                <button id="toggle-edit-btn" onclick="toggleEditMode()" class="w-9 h-9 bg-slate-200/60 rounded-full flex items-center justify-center text-slate-600 active:scale-90 transition-all">
+                <!-- Nút Sửa (Edit Mode) -->
+                <button id="toggle-edit-btn" onclick="toggleEditMode()" class="w-10 h-10 bg-slate-200/60 rounded-full flex items-center justify-center text-slate-600 active:scale-90 transition-all">
                     <i class="fa-solid fa-pen-to-square"></i>
                 </button>
             </div>
         </div>
 
-        <!-- Dynamic Filter Chips -->
+        <!-- BỘ LỌC (Filter Chips) -->
         <div class="px-5 flex gap-2 overflow-x-auto hide-scroll pb-1" id="filter-container">
-            <!-- Rendered via JS -->
+            <!-- Render động từ JavaScript -->
         </div>
     </header>
 
-    <!-- Main Content: Timeline -->
-    <main class="scroll-area hide-scroll px-5 pt-5 relative" id="timeline-container"></main>
+    <!-- KHU VỰC HIỂN THỊ LỘ TRÌNH (Timeline) -->
+    <main class="scroll-area hide-scroll px-5 pt-6 relative" id="timeline-container"></main>
 
-    <!-- Empty State -->
+    <!-- TRẠNG THÁI TRỐNG -->
     <div id="empty-state" class="hidden absolute inset-0 flex flex-col items-center justify-center z-10 pointer-events-none pt-20">
         <div class="w-16 h-16 bg-slate-200/50 rounded-full flex items-center justify-center text-slate-400 text-2xl mb-4"><i class="fa-solid fa-map-location"></i></div>
-        <h2 class="text-lg font-bold text-appDark">Trống trơn</h2>
+        <h2 class="text-xl font-bold text-appDark">Trống trơn</h2>
         <p class="text-slate-500 mt-1 text-center px-8 text-sm">Chưa có điểm dừng nào thuộc lộ trình này.</p>
     </div>
 
-    <!-- Floating Action Button -->
-    <button onclick="openAddSheet()" class="absolute bottom-8 right-6 w-14 h-14 bg-appBlue text-white rounded-full shadow-float flex items-center justify-center text-2xl active:scale-90 transition-transform z-30">
+    <!-- NÚT THÊM (+) -->
+    <button onclick="openAddSheet()" class="absolute bottom-10 right-6 w-14 h-14 bg-appBlue text-white rounded-full shadow-float flex items-center justify-center text-2xl active:scale-90 transition-transform z-30">
         <i class="fa-solid fa-plus"></i>
     </button>
 
-    <!-- Overlay & Modals -->
+    <!-- ==================== MODALS (BOTTOM SHEETS) ==================== -->
     <div id="sheet-overlay" class="absolute inset-0 bg-black/40 backdrop-blur-sm z-40 hidden opacity-0 transition-all duration-300" onclick="closeModals()"></div>
     
-    <!-- 1. ADD/EDIT LOCATION MODAL -->
-    <div id="location-sheet" class="absolute bottom-0 left-0 right-0 bg-white rounded-t-[32px] z-50 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] transform translate-y-full transition-transform duration-300 ease-out flex flex-col" style="max-height: 92dvh;">
+    <!-- 1. MODAL THÊM / SỬA ĐỊA ĐIỂM -->
+    <div id="location-sheet" class="absolute bottom-0 left-0 right-0 bg-white rounded-t-[32px] z-50 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] transform translate-y-full transition-transform duration-300 ease-out flex flex-col pb-safe" style="max-height: 92dvh;">
         <div class="w-full flex justify-center pt-3 pb-2" onclick="closeModals()"><div class="w-12 h-1.5 bg-slate-200 rounded-full"></div></div>
-        <div class="px-6 pb-8 overflow-y-auto hide-scroll flex-1">
+        <div class="px-6 pb-6 overflow-y-auto hide-scroll flex-1">
             <div class="flex justify-between items-center mb-6 mt-2">
                 <h2 class="text-2xl font-bold text-appDark" id="sheet-title">Thêm điểm dừng</h2>
                 <button onclick="closeModals()" class="w-8 h-8 bg-slate-100 text-slate-500 rounded-full active:scale-90"><i class="fa-solid fa-xmark"></i></button>
             </div>
+
             <form id="location-form" onsubmit="saveLocation(event)">
                 <input type="hidden" id="edit-id">
                 <div class="space-y-4">
+                    <!-- Link Google Map -->
                     <div>
                         <div class="relative">
                             <div class="absolute inset-y-0 left-4 flex items-center pointer-events-none text-appBlue"><i class="fa-solid fa-link"></i></div>
-                            <input type="url" id="loc-link" placeholder="Dán link Google Maps..." class="w-full pl-10 pr-12 py-3.5 bg-slate-50 rounded-2xl outline-none text-[15px] font-medium border border-transparent focus:border-appBlue">
+                            <input type="url" id="loc-link" placeholder="Dán link Google Maps..." class="w-full pl-10 pr-12 py-3.5 bg-slate-50 rounded-2xl outline-none text-[15px] font-medium border border-transparent focus:border-appBlue focus:bg-white focus:ring-2 focus:ring-appBlue/20 transition-all">
                             <div id="link-loading" class="absolute inset-y-0 right-4 flex items-center hidden"><div class="loader"></div></div>
                         </div>
                     </div>
+                    <!-- Tên địa điểm -->
                     <div>
                         <div class="relative">
                             <div class="absolute inset-y-0 left-4 flex items-center pointer-events-none text-slate-400"><i class="fa-solid fa-location-dot"></i></div>
-                            <input type="text" id="loc-name" placeholder="Tên địa điểm" class="w-full pl-10 pr-4 py-3.5 bg-slate-50 rounded-2xl outline-none text-[15px] font-bold border border-transparent focus:border-appBlue">
+                            <input type="text" id="loc-name" placeholder="Tên địa điểm" class="w-full pl-10 pr-4 py-3.5 bg-slate-50 rounded-2xl outline-none text-[15px] font-bold border border-transparent focus:border-appBlue focus:bg-white focus:ring-2 focus:ring-appBlue/20 transition-all">
                         </div>
                     </div>
+                    <!-- Ghi chú -->
                     <div>
                         <div class="relative">
                             <div class="absolute top-3.5 left-4 pointer-events-none text-slate-400"><i class="fa-solid fa-note-sticky"></i></div>
-                            <textarea id="loc-desc" rows="2" placeholder="Ghi chú (Tùy chọn)..." class="w-full pl-10 pr-4 py-3.5 bg-slate-50 rounded-2xl outline-none text-[15px] resize-none border border-transparent focus:border-appBlue"></textarea>
+                            <textarea id="loc-desc" rows="2" placeholder="Ghi chú (Tùy chọn)..." class="w-full pl-10 pr-4 py-3.5 bg-slate-50 rounded-2xl outline-none text-[15px] resize-none border border-transparent focus:border-appBlue focus:bg-white focus:ring-2 focus:ring-appBlue/20 transition-all"></textarea>
                         </div>
                     </div>
+                    <!-- Loại & Tuyến -->
                     <div class="flex gap-3">
                         <div class="relative flex-1">
-                            <select id="loc-type" class="w-full pl-4 pr-8 py-3.5 bg-slate-50 rounded-2xl outline-none appearance-none text-[14px] font-semibold border border-transparent focus:border-appBlue"></select>
+                            <select id="loc-type" class="w-full pl-4 pr-8 py-3.5 bg-slate-50 rounded-2xl outline-none appearance-none text-[14px] font-semibold border border-transparent focus:border-appBlue focus:bg-white focus:ring-2 focus:ring-appBlue/20 transition-all"></select>
                             <div class="absolute inset-y-0 right-3 flex items-center pointer-events-none text-slate-400"><i class="fa-solid fa-chevron-down text-xs"></i></div>
                         </div>
                         <div class="relative flex-1">
-                            <select id="loc-route" class="w-full pl-4 pr-8 py-3.5 bg-slate-50 rounded-2xl outline-none appearance-none text-[14px] font-semibold border border-transparent focus:border-appBlue"></select>
+                            <select id="loc-route" class="w-full pl-4 pr-8 py-3.5 bg-slate-50 rounded-2xl outline-none appearance-none text-[14px] font-semibold border border-transparent focus:border-appBlue focus:bg-white focus:ring-2 focus:ring-appBlue/20 transition-all"></select>
                             <div class="absolute inset-y-0 right-3 flex items-center pointer-events-none text-slate-400"><i class="fa-solid fa-chevron-down text-xs"></i></div>
                         </div>
                     </div>
                 </div>
-                <div id="form-error" class="hidden mt-3 text-appRed text-sm font-medium"><i class="fa-solid fa-circle-exclamation mr-1"></i> Điền đủ Tên và Link hợp lệ.</div>
-                <button type="submit" class="w-full mt-6 bg-appBlue text-white font-bold py-4 rounded-2xl active:scale-[0.98] text-[16px] shadow-float">Lưu Điểm Dừng</button>
+
+                <div id="form-error" class="hidden mt-3 text-appRed text-sm font-medium flex items-center"><i class="fa-solid fa-circle-exclamation mr-1.5"></i> Vui lòng điền đủ Tên và Link hợp lệ.</div>
+
+                <button type="submit" class="w-full mt-6 bg-appBlue text-white font-bold py-4 rounded-2xl active:scale-[0.98] text-[16px] shadow-float transition-transform">Lưu Điểm Dừng</button>
             </form>
         </div>
     </div>
 
-    <!-- 2. SETTINGS MODAL -->
-    <div id="settings-sheet" class="absolute bottom-0 left-0 right-0 bg-white rounded-t-[32px] z-50 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] transform translate-y-full transition-transform duration-300 ease-out flex flex-col" style="height: 92dvh;">
+    <!-- 2. MODAL CÀI ĐẶT (SETTINGS) -->
+    <div id="settings-sheet" class="absolute bottom-0 left-0 right-0 bg-white rounded-t-[32px] z-50 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] transform translate-y-full transition-transform duration-300 ease-out flex flex-col pb-safe" style="height: 92dvh;">
         <div class="w-full flex justify-center pt-3 pb-2" onclick="closeModals()"><div class="w-12 h-1.5 bg-slate-200 rounded-full"></div></div>
-        <div class="px-6 pb-8 overflow-y-auto hide-scroll flex-1">
+        <div class="px-6 pb-6 overflow-y-auto hide-scroll flex-1">
             <div class="flex justify-between items-center mb-6 mt-2">
-                <h2 class="text-2xl font-bold text-appDark">Cấu hình</h2>
+                <h2 class="text-2xl font-bold text-appDark">Cấu hình App</h2>
                 <button onclick="closeModals()" class="w-8 h-8 bg-slate-100 text-slate-500 rounded-full active:scale-90"><i class="fa-solid fa-xmark"></i></button>
             </div>
             
             <!-- Type Configs -->
             <div class="mb-8">
-                <h3 class="text-sm font-bold text-slate-400 uppercase tracking-wider mb-3">Tên Phân Loại Điểm</h3>
-                <div class="space-y-2 bg-slate-50 p-3 rounded-2xl border border-slate-100" id="settings-types-container">
-                    <!-- Rendered via JS -->
-                </div>
+                <h3 class="text-[13px] font-bold text-slate-400 uppercase tracking-wider mb-3">Tên Nhãn Phân Loại</h3>
+                <div class="space-y-2 bg-slate-50 p-3 rounded-2xl border border-slate-100" id="settings-types-container"></div>
             </div>
 
             <!-- Route Configs -->
             <div>
-                <h3 class="text-sm font-bold text-slate-400 uppercase tracking-wider mb-3">Quản lý Tuyến Đường</h3>
-                <div class="space-y-2 bg-slate-50 p-3 rounded-2xl border border-slate-100" id="settings-routes-container">
-                    <!-- Rendered via JS -->
-                </div>
-                <button onclick="addNewRoute()" class="mt-3 w-full py-3 bg-slate-100 text-appBlue font-bold rounded-xl active:bg-slate-200 text-sm"><i class="fa-solid fa-plus mr-1"></i> Thêm tuyến mới</button>
+                <h3 class="text-[13px] font-bold text-slate-400 uppercase tracking-wider mb-3">Quản lý Tuyến Đường</h3>
+                <div class="space-y-2 bg-slate-50 p-3 rounded-2xl border border-slate-100" id="settings-routes-container"></div>
+                <button onclick="addNewRoute()" class="mt-3 w-full py-3.5 bg-slate-100 text-appBlue font-bold rounded-xl active:bg-slate-200 text-sm transition-colors"><i class="fa-solid fa-plus mr-1"></i> Thêm tuyến mới</button>
             </div>
 
-            <button onclick="saveSettings()" class="w-full mt-8 bg-appDark text-white font-bold py-4 rounded-2xl active:scale-[0.98] text-[16px]">Lưu Cấu Hình</button>
+            <button onclick="saveSettings()" class="w-full mt-8 bg-appDark text-white font-bold py-4 rounded-2xl active:scale-[0.98] text-[16px] transition-transform">Lưu Cấu Hình</button>
         </div>
     </div>
 
 </div>
 
 <script>
-    // --- APP STATE & CONFIG ---
+    // ==========================================
+    // 1. DATA & STATE (DỮ LIỆU VÀ TRẠNG THÁI)
+    // ==========================================
     let isEditMode = false;
     let currentFilter = 'all';
     let itinerary = [];
     
-    // Config mặc định
+    // Cấu hình linh hoạt mặc định
     let appConfig = {
         typeLabels: {
             start: 'Vị trí',
@@ -173,13 +196,14 @@
             pass: 'Đường đèo'
         },
         routes: [
-            { id: 'all', name: 'Tuyến chung (Mặc định)' },
-            { id: 'route_1', name: 'Tuyến QL1A' },
-            { id: 'route_2', name: 'Tuyến Cao Tốc' }
+            { id: 'all', name: 'Tuyến chung' },
+            { id: 'daininh', name: 'Đại Ninh' },
+            { id: 'giabac', name: 'Gia Bắc' },
+            { id: 'dami', name: 'Đa Mi' }
         ]
     };
 
-    // Style cứng cho các Type (Giữ nguyên UI đẹp)
+    // Giao diện tĩnh của các nhãn phân loại (Màu sắc, Icon)
     const typeUI = {
         start: { icon: 'fa-house-flag',   bg: 'bg-indigo-500',  light: 'bg-indigo-100 text-indigo-700' },
         rest:  { icon: 'fa-mug-hot',      bg: 'bg-orange-500',  light: 'bg-orange-100 text-orange-700' },
@@ -188,21 +212,27 @@
         pass:  { icon: 'fa-mountain',     bg: 'bg-emerald-500', light: 'bg-emerald-100 text-emerald-700' },
     };
 
-    // Dữ liệu mẫu (Generic)
+    // Lộ trình mặc định (Đầy đủ Data)
     const defaultRoute = [
-        { id: 1, type: "start", route: "all", name: "Nhà - Điểm xuất phát", desc: "Kiểm tra xe, đổ đầy bình xăng trước khi đi", mapLink: "https://maps.google.com/" },
-        { id: 2, type: "rest", route: "all", name: "Trạm dừng chân đầu tiên", desc: "Nghỉ ngơi 15 phút, uống cafe", mapLink: "https://maps.google.com/" },
-        { id: 3, type: "scenic", route: "route_1", name: "Điểm ngắm cảnh Biển", desc: "Chụp ảnh kỷ niệm", mapLink: "https://maps.google.com/" },
-        { id: 4, type: "pass", route: "route_2", name: "Đèo mây mù", desc: "Đường dốc, đi số thấp, bật đèn sương mù", mapLink: "https://maps.google.com/" },
-        { id: 5, type: "start", route: "all", name: "Khách sạn / Điểm đến", desc: "Kết thúc hành trình an toàn", mapLink: "https://maps.google.com/" }
+        { id: 1, type: "start", route: "all", name: "Nhà SG - Chung cư An Khang", desc: "Sắp xếp hành lý, kiểm tra xe", mapLink: "https://www.google.com/maps/search/?api=1&query=Chung+cư+An+Khang,+TP+HCM" },
+        { id: 2, type: "rest", route: "all", name: "Trạm dừng VEC E (Cao tốc)", desc: "Đi vệ sinh, mua nước uống, nghỉ ngơi nhẹ", mapLink: "https://www.google.com/maps/search/?api=1&query=Trạm+dừng+nghỉ+cao+tốc+Long+Thành+Dầu+Giây" },
+        { id: 3, type: "rest", route: "all", name: "Trạm dừng Dầu Giây - Phan Thiết", desc: "Nghỉ ngơi chặng 2, kiểm tra lốp xe", mapLink: "https://www.google.com/maps/search/?api=1&query=Trạm+dừng+nghỉ+cao+tốc+Dầu+Giây+Phan+Thiết" },
+        { id: 4, type: "pass", route: "daininh", name: "Đèo Đại Ninh", desc: "Đường QL28B dốc, quanh co nhiều", mapLink: "https://www.google.com/maps/search/?api=1&query=Đèo+Đại+Ninh" },
+        { id: 5, type: "rest", route: "daininh", name: "Điểm dừng chân Dốc đá", desc: "Dừng chân giữa đèo", mapLink: "https://www.google.com/maps/search/?api=1&query=Điểm+dừng+chân+Dốc+đá" },
+        { id: 6, type: "pass", route: "giabac", name: "Đèo Gia Bắc", desc: "Đường QL28, cẩn thận cua gắt", mapLink: "https://www.google.com/maps/search/?api=1&query=Đèo+Gia+Bắc" },
+        { id: 7, type: "rest", route: "giabac", name: "Trạm dừng chân Xuân Anh", desc: "Ăn uống, rửa xe miễn phí", mapLink: "https://maps.app.goo.gl/9yvrLPubUXnjSCPy5" },
+        { id: 8, type: "pass", route: "dami", name: "Đèo Đa Mi", desc: "QL55, cảnh hồ tuyệt đẹp", mapLink: "https://www.google.com/maps/search/?api=1&query=Đèo+Đa+Mi" },
+        { id: 9, type: "start", route: "all", name: "Nhà ĐL - 6 La Sơn Phu tử", desc: "Kết thúc hành trình an toàn", mapLink: "https://www.google.com/maps/search/?api=1&query=6+La+Sơn+Phu+Tử,+Đà+Lạt" }
     ];
 
-    // --- INIT ---
+    // ==========================================
+    // 2. KHỞI TẠO VÀ LƯU TRỮ (LOCAL STORAGE)
+    // ==========================================
     function initApp() {
-        const savedConfig = localStorage.getItem('appConfigV4');
+        const savedConfig = localStorage.getItem('appConfigFinal');
         if (savedConfig) appConfig = JSON.parse(savedConfig);
 
-        const savedData = localStorage.getItem('appDataV4');
+        const savedData = localStorage.getItem('appDataFinal');
         itinerary = savedData ? JSON.parse(savedData) : [...defaultRoute];
         
         renderConfigDependentUI();
@@ -210,28 +240,26 @@
     }
 
     function saveSync() { 
-        localStorage.setItem('appDataV4', JSON.stringify(itinerary)); 
-        localStorage.setItem('appConfigV4', JSON.stringify(appConfig));
+        localStorage.setItem('appDataFinal', JSON.stringify(itinerary)); 
+        localStorage.setItem('appConfigFinal', JSON.stringify(appConfig));
     }
 
-    // --- RENDER DYNAMIC UI (Filter, Selects) ---
+    // ==========================================
+    // 3. XỬ LÝ GIAO DIỆN (UI RENDER)
+    // ==========================================
     function renderConfigDependentUI() {
-        // 1. Render Filter Chips
+        // Render Filter Chips
         const filterContainer = document.getElementById('filter-container');
         filterContainer.innerHTML = appConfig.routes.map(r => `
-            <button onclick="setFilter('${r.id}')" id="chip-${r.id}" class="filter-chip shrink-0 px-4 py-2 rounded-full text-sm font-bold bg-white text-slate-500 border border-slate-200 transition-all">${r.name}</button>
+            <button onclick="setFilter('${r.id}')" id="chip-${r.id}" class="filter-chip shrink-0 px-5 py-2.5 rounded-full text-sm font-bold bg-white text-slate-500 border border-slate-200 transition-all">${r.name}</button>
         `).join('');
         updateFilterUI();
 
-        // 2. Render Select Options (Add Modal)
-        const typeSelect = document.getElementById('loc-type');
-        typeSelect.innerHTML = Object.entries(appConfig.typeLabels).map(([key, val]) => `<option value="${key}">${val}</option>`).join('');
-        
-        const routeSelect = document.getElementById('loc-route');
-        routeSelect.innerHTML = appConfig.routes.map(r => `<option value="${r.id}">${r.name}</option>`).join('');
+        // Render Dropdown (Select) trong Modal Add
+        document.getElementById('loc-type').innerHTML = Object.entries(appConfig.typeLabels).map(([key, val]) => `<option value="${key}">${val}</option>`).join('');
+        document.getElementById('loc-route').innerHTML = appConfig.routes.map(r => `<option value="${r.id}">${r.name}</option>`).join('');
     }
 
-    // --- FILTER LOGIC ---
     function setFilter(routeId) {
         currentFilter = routeId;
         updateFilterUI();
@@ -240,13 +268,12 @@
     
     function updateFilterUI() {
         document.querySelectorAll('.filter-chip').forEach(btn => {
-            btn.className = "filter-chip shrink-0 px-4 py-2 rounded-full text-sm font-bold bg-white text-slate-500 border border-slate-200 transition-all";
+            btn.className = "filter-chip shrink-0 px-5 py-2.5 rounded-full text-sm font-bold bg-white text-slate-500 border border-slate-200 transition-all";
         });
         const activeBtn = document.getElementById(`chip-${currentFilter}`);
-        if(activeBtn) activeBtn.className = "filter-chip shrink-0 px-4 py-2 rounded-full text-sm font-bold bg-appDark text-white shadow-md transition-all";
+        if(activeBtn) activeBtn.className = "filter-chip shrink-0 px-5 py-2.5 rounded-full text-sm font-bold bg-appDark text-white shadow-md transition-all";
     }
 
-    // --- EDIT MODE LOGIC ---
     function toggleEditMode() {
         isEditMode = !isEditMode;
         const btn = document.getElementById('toggle-edit-btn');
@@ -255,18 +282,20 @@
         renderTimeline();
     }
 
-    // --- RENDER TIMELINE ---
     function renderTimeline() {
         const container = document.getElementById('timeline-container');
         const empty = document.getElementById('empty-state');
+        const subtitle = document.getElementById('header-subtitle');
         container.innerHTML = '';
 
+        // Lọc hiển thị
         const filtered = itinerary.filter(item => (currentFilter === 'all') || (item.route === 'all') || (item.route === currentFilter));
         
+        subtitle.innerText = filtered.length ? `${filtered.length} điểm dừng` : 'Lộ trình trống';
+
         if (!filtered.length) { empty.classList.remove('hidden'); return; } 
         empty.classList.add('hidden');
 
-        // Lấy Map tên Route để hiển thị
         const routeNameMap = {};
         appConfig.routes.forEach(r => routeNameMap[r.id] = r.name);
 
@@ -278,37 +307,40 @@
             
             const wazeUrl = `https://waze.com/ul?q=${encodeURIComponent(item.name)}&navigate=yes`;
             
-            const descHtml = item.desc 
-                ? `<p class="text-[13px] text-slate-500 mt-2 leading-relaxed bg-slate-50 p-2.5 rounded-xl border border-slate-100">${item.desc}</p>` 
-                : '';
+            // Xử lý HTML Ghi chú
+            const descHtml = item.desc ? `<p class="text-[13px] text-slate-500 mt-2 leading-relaxed bg-slate-50 p-3 rounded-xl border border-slate-100">${item.desc}</p>` : '';
 
+            // Render Buttons dựa trên chế độ Edit
             const actionButtons = isEditMode 
                 ? `
                 <div class="flex flex-col gap-2">
-                    <button onclick="openAddSheet(${item.id})" class="w-10 h-10 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center active:scale-90"><i class="fa-solid fa-pen"></i></button>
-                    <button onclick="deleteItem(${item.id})" class="w-10 h-10 rounded-full bg-red-100 text-appRed flex items-center justify-center active:scale-90"><i class="fa-solid fa-trash"></i></button>
+                    <button onclick="openAddSheet(${item.id})" class="w-10 h-10 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center active:scale-90 transition-transform"><i class="fa-solid fa-pen"></i></button>
+                    <button onclick="deleteItem(${item.id})" class="w-10 h-10 rounded-full bg-red-100 text-appRed flex items-center justify-center active:scale-90 transition-transform"><i class="fa-solid fa-trash"></i></button>
                 </div>
                 `
                 : `
                 <div class="flex flex-col gap-2">
-                    <a href="${item.mapLink}" target="_blank" class="w-10 h-10 rounded-full bg-[#E5F0FF] text-appBlue flex items-center justify-center active:scale-90"><i class="fa-solid fa-location-arrow"></i></a>
-                    <a href="${wazeUrl}" target="_blank" class="w-10 h-10 rounded-full bg-[#E0F6F5] text-[#05C8C6] flex items-center justify-center active:scale-90"><i class="fa-brands fa-waze text-lg"></i></a>
+                    <a href="${item.mapLink}" target="_blank" class="w-10 h-10 rounded-full bg-[#E5F0FF] text-appBlue flex items-center justify-center active:scale-90 transition-transform shadow-sm"><i class="fa-solid fa-location-arrow"></i></a>
+                    <a href="${wazeUrl}" target="_blank" class="w-10 h-10 rounded-full bg-[#E0F6F5] text-[#05C8C6] flex items-center justify-center active:scale-90 transition-transform shadow-sm"><i class="fa-brands fa-waze text-lg"></i></a>
                 </div>
                 `;
 
             container.insertAdjacentHTML('beforeend', `
-            <div class="relative pl-11 pb-5 group">
-                ${!isLast ? '<div class="absolute left-[19px] top-8 bottom-[-10px] w-[2px] bg-slate-200"></div>' : ''}
+            <div class="relative pl-12 pb-6 group">
+                <!-- Đường gạch dọc nối các điểm -->
+                ${!isLast ? '<div class="absolute left-[19px] top-10 bottom-[-10px] w-[2px] bg-slate-200"></div>' : ''}
                 
-                <div class="absolute left-0 top-1 w-10 h-10 rounded-full flex items-center justify-center text-white z-10 border-4 border-appBg ${ui.bg}">
+                <!-- Chấm Icon -->
+                <div class="absolute left-0 top-1.5 w-10 h-10 rounded-full flex items-center justify-center text-white z-10 border-4 border-appBg ${ui.bg}">
                     <i class="fa-solid ${ui.icon} text-[12px]"></i>
                 </div>
                 
+                <!-- Khối nội dung chính (Card) -->
                 <div class="bg-white rounded-3xl shadow-soft p-4 flex justify-between items-start gap-3 border border-slate-100/50">
                     <div class="flex-1 min-w-0 pt-0.5">
                         <div class="flex gap-1.5 mb-2 flex-wrap">
-                            <span class="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide ${ui.light}">${typeName}</span>
-                            <span class="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide bg-slate-100 text-slate-500">${routeName}</span>
+                            <span class="px-2.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider ${ui.light}">${typeName}</span>
+                            <span class="px-2.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-500">${routeName}</span>
                         </div>
                         <h3 class="text-[17px] font-bold text-appDark leading-snug break-words">${item.name}</h3>
                         ${descHtml}
@@ -319,7 +351,9 @@
         });
     }
 
-    // --- MODALS CONTROL ---
+    // ==========================================
+    // 4. ĐIỀU KHIỂN CÁC MODAL BOTTOM SHEET
+    // ==========================================
     const overlay = document.getElementById('sheet-overlay');
     const locSheet = document.getElementById('location-sheet');
     const setSheet = document.getElementById('settings-sheet');
@@ -331,7 +365,7 @@
         setTimeout(() => overlay.classList.add('hidden'), 300);
     }
 
-    // --- LOCATION ADD/EDIT ---
+    // Modal Thêm/Sửa Lộ trình
     function openAddSheet(id = null) {
         document.getElementById('form-error').classList.add('hidden');
         document.getElementById('location-form').reset();
@@ -382,23 +416,21 @@
     }
 
     function deleteItem(id) {
-        if(confirm("Xóa điểm dừng này?")) {
+        if(confirm("Xóa điểm dừng này? Hành động không thể hoàn tác.")) {
             itinerary = itinerary.filter(i => i.id !== id);
             saveSync(); renderTimeline();
         }
     }
 
-    // --- SETTINGS LOGIC ---
-    let tempRoutes = []; // Dùng mảng tạm khi đang sửa trong Modal
-    
+    // Modal Cài đặt
+    let tempRoutes = []; 
     function openSettings() {
         tempRoutes = JSON.parse(JSON.stringify(appConfig.routes));
         
-        // Render Type Inputs
         const typesHtml = Object.entries(appConfig.typeLabels).map(([k, v]) => `
             <div class="flex items-center gap-3">
                 <div class="w-8 h-8 rounded bg-slate-200 flex items-center justify-center text-slate-500 text-xs"><i class="fa-solid ${typeUI[k].icon}"></i></div>
-                <input type="text" id="cfg-type-${k}" value="${v}" class="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-appBlue">
+                <input type="text" id="cfg-type-${k}" value="${v}" class="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-2.5 text-[15px] outline-none focus:border-appBlue transition-colors">
             </div>
         `).join('');
         document.getElementById('settings-types-container').innerHTML = typesHtml;
@@ -412,8 +444,8 @@
     function renderSettingsRoutes() {
         const routesHtml = tempRoutes.map((r, index) => `
             <div class="flex items-center gap-2">
-                <input type="text" value="${r.name}" onchange="updateTempRoute(${index}, this.value)" class="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-appBlue" ${r.id === 'all' ? 'disabled' : ''}>
-                ${r.id !== 'all' ? `<button onclick="removeTempRoute(${index})" class="w-9 h-9 flex items-center justify-center text-red-400 bg-red-50 rounded-lg"><i class="fa-solid fa-trash text-xs"></i></button>` : ''}
+                <input type="text" value="${r.name}" onchange="updateTempRoute(${index}, this.value)" class="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-2.5 text-[15px] outline-none focus:border-appBlue transition-colors" ${r.id === 'all' ? 'disabled' : ''}>
+                ${r.id !== 'all' ? `<button onclick="removeTempRoute(${index})" class="w-10 h-10 flex items-center justify-center text-red-400 bg-red-50 rounded-lg active:scale-90 transition-transform"><i class="fa-solid fa-trash text-sm"></i></button>` : ''}
             </div>
         `).join('');
         document.getElementById('settings-routes-container').innerHTML = routesHtml;
@@ -427,14 +459,19 @@
     }
 
     function saveSettings() {
-        // Lưu Types
         Object.keys(appConfig.typeLabels).forEach(k => {
             const val = document.getElementById(`cfg-type-${k}`).value.trim();
             if(val) appConfig.typeLabels[k] = val;
         });
 
-        // Lưu Routes (Lọc bỏ các route tên rỗng)
         appConfig.routes = tempRoutes.filter(r => r.name.trim() !== "");
+
+        // Cập nhật lại các item bị mất Route (nếu Route đó bị xóa)
+        const validRouteIds = appConfig.routes.map(r => r.id);
+        itinerary = itinerary.map(item => {
+            if (!validRouteIds.includes(item.route)) item.route = 'all';
+            return item;
+        });
 
         saveSync(); 
         renderConfigDependentUI(); 
@@ -442,7 +479,9 @@
         closeModals();
     }
 
-    // --- AUTO FETCH PROXY TỪ LINK ---
+    // ==========================================
+    // 5. TÍNH NĂNG NÂNG CAO: LẤY TÊN MAP TỰ ĐỘNG
+    // ==========================================
     document.getElementById('loc-link').addEventListener('input', async (e) => {
         const url = e.target.value.trim();
         if (url.startsWith('http')) {
@@ -450,6 +489,7 @@
             const nameInp = document.getElementById('loc-name');
             loading.classList.remove('hidden');
             try {
+                // Sử dụng AllOrigins làm CORS Proxy Server
                 const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`);
                 const data = await res.json();
                 if (data.contents) {
@@ -458,11 +498,15 @@
                     title = title.replace(/(- Google Maps|· Google Maps)/gi, '').trim();
                     if (title && title !== 'Google Maps' && !nameInp.value) nameInp.value = title;
                 }
-            } catch (err) {} finally { loading.classList.add('hidden'); }
+            } catch (err) {
+                console.error('Lỗi khi tự động lấy tên:', err);
+            } finally { 
+                loading.classList.add('hidden'); 
+            }
         }
     });
 
-    // Run
+    // Bắt đầu khởi chạy ứng dụng
     initApp();
 </script>
 </body>
