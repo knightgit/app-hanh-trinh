@@ -88,10 +88,7 @@
                 <p class="text-[11px] text-slate-500 -mt-0.5" id="offline-status"></p>
             </div>
             <div class="flex gap-2">
-                <button data-action="toggleSearch" aria-label="Tìm kiếm" class="w-9 h-9 bg-slate-200/60 rounded-full flex items-center justify-center text-slate-600 active:scale-90 transition">
-                    <i class="fa-solid fa-magnifying-glass text-sm"></i>
-                </button>
-                <button data-action="openMultiNav" aria-label="Đi tất cả" class="w-9 h-9 bg-slate-200/60 rounded-full flex items-center justify-center text-slate-600 active:scale-90 transition">
+                <button data-action="openMultiNav" aria-label="Lập lộ trình" class="w-9 h-9 bg-slate-200/60 rounded-full flex items-center justify-center text-slate-600 active:scale-90 transition">
                     <i class="fa-solid fa-route text-sm"></i>
                 </button>
                 <button data-action="openSettings" aria-label="Cấu hình" class="w-9 h-9 bg-slate-200/60 rounded-full flex items-center justify-center text-slate-600 active:scale-90 transition">
@@ -103,15 +100,8 @@
             </div>
         </div>
 
-        <div id="search-wrap" class="hidden px-5 pb-2">
-            <div class="relative">
-                <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
-                <input id="search-input" type="search" placeholder="Tìm tên hoặc ghi chú..." class="w-full pl-10 pr-10 py-2.5 bg-white rounded-full text-sm outline-none border border-slate-200 focus:border-appBlue">
-                <button data-action="clearSearch" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs w-6 h-6 rounded-full bg-slate-100" aria-label="Xóa"><i class="fa-solid fa-xmark"></i></button>
-            </div>
-        </div>
 
-        <div class="px-5">
+<div class="px-5">
             <div class="flex gap-2 overflow-x-auto hide-scroll pb-1" id="filter-container" role="tablist"></div>
         </div>
 
@@ -183,33 +173,6 @@
             <p class="text-sm text-slate-500 mb-4" id="nav-sheet-desc"></p>
             <div class="grid grid-cols-3 gap-3" id="nav-apps-container"></div>
 
-            <!-- Multi-stop options -->
-            <div id="multi-options" class="hidden mt-5">
-                <div class="bg-slate-50 rounded-2xl p-4 border border-slate-100 space-y-3">
-                    <h3 class="text-xs font-bold text-slate-500 uppercase">Thông tin lộ trình</h3>
-                    <div id="route-summary" class="text-sm text-appDark font-semibold"></div>
-                    <div class="grid grid-cols-2 gap-2 text-center">
-                        <div class="bg-white rounded-xl p-2.5 border border-slate-100">
-                            <div class="text-[10px] text-slate-500 font-bold uppercase">Khoảng cách</div>
-                            <div class="text-base font-bold text-appDark" id="summary-distance">—</div>
-                        </div>
-                        <div class="bg-white rounded-xl p-2.5 border border-slate-100">
-                            <div class="text-[10px] text-slate-500 font-bold uppercase">Phí cao tốc (ước)</div>
-                            <div class="text-base font-bold text-appDark" id="summary-toll">—</div>
-                        </div>
-                    </div>
-                    <div class="flex items-center justify-between bg-white p-3 rounded-xl border border-slate-100">
-                        <label class="text-xs font-semibold text-slate-600" for="toll-group">Nhóm phương tiện</label>
-                        <select id="toll-group" class="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-xs font-bold">
-                            <option value="1">Nhóm 1 (xe &lt;12 chỗ)</option>
-                            <option value="2">Nhóm 2 (12-30 chỗ)</option>
-                            <option value="3">Nhóm 3 (&gt;31 chỗ)</option>
-                            <option value="4">Nhóm 4 (xe tải 10-18T)</option>
-                            <option value="5">Nhóm 5 (xe tải &gt;18T)</option>
-                        </select>
-                    </div>
-                </div>
-            </div>
         </div>
     </div>
 
@@ -256,6 +219,47 @@
                 </label>
             </div>
 
+            <div class="mb-6">
+                <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider mb-3">File Dữ Liệu JSON</h3>
+
+                <!-- File status -->
+                <div class="bg-slate-50 rounded-2xl border border-slate-100 px-4 py-3 mb-3 flex items-center gap-2">
+                    <i class="fa-solid fa-file-code text-appBlue shrink-0"></i>
+                    <span id="file-status-text" class="text-[12px] text-slate-400 flex-1">Chưa liên kết file</span>
+                    <button id="file-disconnect-btn" data-action="disconnectFile"
+                            class="hidden text-[11px] text-red-500 font-bold px-2 py-1 bg-red-50 rounded-lg active:scale-90 shrink-0">
+                        Hủy liên kết
+                    </button>
+                </div>
+                <p id="file-no-support" class="hidden text-[11px] text-amber-600 bg-amber-50 rounded-xl px-3 py-2 mb-3">
+                    <i class="fa-solid fa-triangle-exclamation mr-1"></i>Trình duyệt chưa hỗ trợ File Access API — dùng Xuất/Nhập bên dưới
+                </p>
+
+                <!-- File API buttons -->
+                <div class="grid grid-cols-2 gap-2 mb-2">
+                    <button data-action="connectFile"
+                            class="flex items-center justify-center gap-2 py-2.5 bg-slate-100 text-appDark font-bold rounded-2xl active:bg-slate-200 text-sm border border-slate-200">
+                        <i class="fa-solid fa-folder-open text-appBlue text-xs"></i> Liên kết file
+                    </button>
+                    <button data-action="createFile"
+                            class="flex items-center justify-center gap-2 py-2.5 bg-appBlue text-white font-bold rounded-2xl active:opacity-80 text-sm">
+                        <i class="fa-solid fa-file-circle-plus text-xs"></i> Tạo file mới
+                    </button>
+                </div>
+
+                <!-- Export/Import (always available) -->
+                <div class="grid grid-cols-2 gap-2">
+                    <button data-action="importData"
+                            class="flex items-center justify-center gap-2 py-2.5 bg-slate-100 text-appDark font-bold rounded-2xl active:bg-slate-200 text-sm border border-slate-200">
+                        <i class="fa-solid fa-file-arrow-up text-appBlue text-xs"></i> Nhập JSON
+                    </button>
+                    <button data-action="exportData"
+                            class="flex items-center justify-center gap-2 py-2.5 bg-slate-100 text-appDark font-bold rounded-2xl active:bg-slate-200 text-sm border border-slate-200">
+                        <i class="fa-solid fa-file-arrow-down text-slate-600 text-xs"></i> Xuất JSON
+                    </button>
+                </div>
+            </div>
+
             <button data-action="saveSettings" class="w-full mt-4 bg-appDark text-white font-bold py-4 rounded-2xl active:scale-[0.98] text-[16px]">Lưu Cấu Hình</button>
         </div>
     </div>
@@ -281,7 +285,68 @@
         </div>
     </div>
 
-    <div id="toast-container" class="absolute top-20 left-1/2 -translate-x-1/2 z-[60] pointer-events-none"></div>
+    <!-- MULTI NAV FULL SCREEN -->
+    <div id="multi-nav-sheet" role="dialog" aria-modal="true"
+         class="absolute inset-0 bg-[#F4F5F9] z-[60] transform translate-y-full transition-transform duration-300 ease-out flex flex-col">
+
+        <!-- Header -->
+        <div class="bg-white/90 backdrop-blur-lg border-b border-slate-200/50 shrink-0"
+             style="padding-top: calc(16px + var(--safe-top)); padding-bottom: 12px;">
+            <div class="px-5 flex items-center gap-3">
+                <button data-action="closeMultiNav"
+                        class="w-9 h-9 bg-slate-100 rounded-full flex items-center justify-center text-slate-600 active:scale-90 shrink-0">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+                <h2 class="text-xl font-bold text-appDark flex-1">Lập Lộ Trình</h2>
+            </div>
+        </div>
+
+        <!-- Scrollable content -->
+        <div class="flex-1 overflow-y-auto hide-scroll px-5 pt-4"
+             style="padding-bottom: calc(160px + var(--safe-bottom));">
+
+            <!-- Stats bar -->
+            <div id="mnav-stats" class="hidden bg-white rounded-2xl border border-slate-100 shadow-soft p-3 mb-4 grid grid-cols-3 gap-2 text-center">
+                <div>
+                    <div class="text-[10px] text-slate-500 font-bold uppercase">Điểm</div>
+                    <div class="text-[18px] font-bold text-appDark" id="mnav-count">0</div>
+                </div>
+                <div>
+                    <div class="text-[10px] text-slate-500 font-bold uppercase">Khoảng cách</div>
+                    <div class="text-[18px] font-bold text-appDark" id="mnav-distance">—</div>
+                </div>
+                <div>
+                    <div class="text-[10px] text-slate-500 font-bold uppercase">Phí cao tốc</div>
+                    <div class="text-[14px] font-bold text-appDark leading-tight mt-1" id="mnav-toll">—</div>
+                </div>
+            </div>
+
+            <!-- Selected stops -->
+            <div id="mnav-selected-section"></div>
+
+            <!-- Available stops -->
+            <div id="mnav-available-section" class="mt-2"></div>
+        </div>
+
+        <!-- Bottom bar: vehicle group + nav apps -->
+        <div class="absolute bottom-0 left-0 right-0 bg-white border-t border-slate-100 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]"
+             style="padding-bottom: calc(1rem + var(--safe-bottom));">
+            <div class="px-5 pt-3 pb-2 flex items-center gap-3">
+                <label class="text-[11px] font-bold text-slate-500 uppercase shrink-0">Nhóm xe</label>
+                <select id="mnav-toll-group"
+                        class="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold outline-none focus:border-appBlue">
+                    <option value="1">Nhóm 1 (xe &lt;12 chỗ)</option>
+                    <option value="2">Nhóm 2 (12-30 chỗ)</option>
+                    <option value="3">Nhóm 3 (&gt;31 chỗ)</option>
+                    <option value="4">Nhóm 4 (xe tải 10-18T)</option>
+                    <option value="5">Nhóm 5 (xe tải &gt;18T)</option>
+                </select>
+            </div>
+            <div class="px-4 grid grid-cols-5 gap-2" id="mnav-apps-container"></div>
+        </div>
+    </div>
+
+    <div id="toast-container" class="absolute top-20 left-1/2 -translate-x-1/2 z-[70] pointer-events-none"></div>
 </div>
 
 <script src="app.js" defer></script>
